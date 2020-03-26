@@ -1,8 +1,9 @@
 import time
 import argparse
+import logging
 from selenium import webdriver
 
-from configuration import Configuration
+import configuration as cfg
 
 # need to hack chrome driver to avoid bot detection
 # https://stackoverflow.com/questions/33225947/can-a-website-detect-when-you-are-using-selenium-with-chromedriver/41904453#41904453
@@ -42,6 +43,7 @@ class ChaseScraper:
         self.driver.quit()
 
     def download_statement(self, account_id, date_from, date_to):
+        logging.info(f"Retrieving statement for account {account_id} from {date_from} to {date_to}")
         self.driver.get(CHASE_STATEMENTS_URL + account_id)
         activity_element = self._find_by_id(DROPDOWN_ACTIVITY_ID)
         activity_element.click()
@@ -78,8 +80,7 @@ if __name__ == "__main__":
     username_ = args.username if args.username else input("username: ")
     password_ = args.password if args.password else input("password: ")
 
-    config = Configuration()
-    config.load()
+    config = cfg.get_configuration()
 
     scraper = ChaseScraper(config.chromedriver_path)
     scraper.logon(username_, password_)

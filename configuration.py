@@ -1,5 +1,9 @@
 import os
 import json
+import logging
+
+CONFIG_FILE_DEFAULT = "./config-default.json"
+CONFIG_FILE_PERSO = "./config.json"
 
 
 class Configuration:
@@ -15,26 +19,28 @@ class Configuration:
     chase_accounts = []
     _loaded = False
 
-    def load(self, config_file_path="./config.json", force=False):
-        if self._loaded and not force:
-            return
+    def load(self, config_file_path=CONFIG_FILE_DEFAULT):
         if not os.path.exists(config_file_path):
-            raise FileNotFoundError(f"{config_file_path} does not exist")
+            logging.warning(f"{config_file_path} does not exist")
+            return
 
         with open(config_file_path, 'r') as f:
             contents = json.load(f)
-            self.chromedriver_path = contents['chromedriver_path']
-            self.chase_accounts = contents['accounts']
-
+            for key in contents:
+                self.__dict__[key] = contents[key]
         self._loaded = True
 
 
-if __name__ == '__main__':
+def get_configuration():
     config = Configuration()
-    config.load()
-    print(config.chromedriver_path)
-    print(config.chase_accounts)
-    config2 = Configuration()
-    print(config2.chromedriver_path)
-    print(config2.chase_accounts)
+    if not config._loaded:
+        config.load(CONFIG_FILE_DEFAULT)
+        config.load(CONFIG_FILE_PERSO)
+    return config
+
+
+if __name__ == '__main__':
+    configuration = get_configuration()
+    print(configuration.chromedriver_path)
+    print(configuration.chase_accounts)
 

@@ -9,6 +9,7 @@ CONFIG_FILE_PERSO = "./config.json"
 class Configuration:
     # make it a singleton
     _instance = None
+    _loaded = False
 
     def __new__(cls):
         if cls._instance is None:
@@ -17,9 +18,9 @@ class Configuration:
 
     chromedriver_path = None
     chase_accounts = []
-    _loaded = False
+    chase_username = ''
 
-    def load(self, config_file_path=CONFIG_FILE_DEFAULT):
+    def load(self, config_file_path, override_only=False):
         if not os.path.exists(config_file_path):
             logging.warning(f"{config_file_path} does not exist")
             return
@@ -27,7 +28,10 @@ class Configuration:
         with open(config_file_path, 'r') as f:
             contents = json.load(f)
             for key in contents:
-                self.__dict__[key] = contents[key]
+                if override_only and key not in self.__dict__:
+                    logging.warning(f"Ignoring '{key}' because it is not an expected configuration item")
+                else:
+                    self.__dict__[key] = contents[key]
         self._loaded = True
 
 
@@ -35,7 +39,7 @@ def get_configuration():
     config = Configuration()
     if not config._loaded:
         config.load(CONFIG_FILE_DEFAULT)
-        config.load(CONFIG_FILE_PERSO)
+        config.load(CONFIG_FILE_PERSO, override_only=True)
     return config
 
 

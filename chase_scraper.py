@@ -2,11 +2,13 @@ import time
 import argparse
 from selenium import webdriver
 
+from configuration import Configuration
+
 # need to hack chrome driver to avoid bot detection
 # https://stackoverflow.com/questions/33225947/can-a-website-detect-when-you-are-using-selenium-with-chromedriver/41904453#41904453
 
 
-DRIVER_PATH = './chromedriver'
+DEFAULT_DRIVER_PATH = './chromedriver'
 
 CHASE_LOGIN_URL = "https://secure01b.chase.com/web/auth"
 CHASE_STATEMENTS_URL = "https://secure01b.chase.com/web/auth/dashboard#/dashboard/accountServicing/downloadAccountTransactions/index;params="
@@ -23,10 +25,10 @@ BUTTON_DOWNLOAD_OTHER_ID = 'downloadOtherActivity'
 
 
 class ChaseScraper:
-    def __init__(self):
+    def __init__(self, driver_path=DEFAULT_DRIVER_PATH):
         options = webdriver.ChromeOptions()
         options.add_argument("--disable-extensions")
-        self.driver = webdriver.Chrome(options=options, executable_path=DRIVER_PATH)
+        self.driver = webdriver.Chrome(options=options, executable_path=driver_path)
 
     def logon(self, username, password):
         self.driver.get(CHASE_LOGIN_URL)
@@ -75,7 +77,14 @@ if __name__ == "__main__":
 
     username_ = args.username if args.username else input("username: ")
     password_ = args.password if args.password else input("password: ")
-    scraper = ChaseScraper()
+
+    config = Configuration()
+    config.load()
+
+    scraper = ChaseScraper(config.chromedriver_path)
     scraper.logon(username_, password_)
-    scraper.download_statement("CARD,BAC,123456789", '01/01/2020', '01/31/2020')
+
+    for name, account in config.chase_accounts.items():
+        scraper.download_statement(account, '01/01/2020', '01/31/2020')
+
     scraper.quit()

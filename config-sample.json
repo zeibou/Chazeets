@@ -1,0 +1,8 @@
+{
+  "chromedriver_path": "./chromedriver",
+  "accounts":
+  {
+    "CHASE_SAMPLE_CHECKING_ACCOUNT" : "DDA,CHK,123456789",
+    "CHASE_SAMPLE_CARD_ACCOUNT" : "CARD,BAC,123456789"
+  }
+}

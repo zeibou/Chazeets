@@ -40,7 +40,9 @@ class ChaseScraper:
 
     def quit(self, cooldown_s=5):
         time.sleep(cooldown_s)   # give time to finish last action
-        self.driver.quit()
+        if self.driver:
+            self.driver.quit()
+            self.driver = None
 
     def download_statement(self, account_id, date_from, date_to):
         logging.info(f"Retrieving statement for account {account_id} from {date_from} to {date_to}")

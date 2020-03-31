@@ -1,10 +1,13 @@
 import datetime as dt
 import logging
 import threading
+import time
+import collections
 import PySimpleGUI as sg
 
 import configuration as cfg
 from chase_scraper import ChaseScraper
+from chase_scraper import DATE_FORMAT as CHASE_DATE_FORMAT
 
 KEY_DATES_FROM = "date_from-key"
 KEY_DATES_TO = "date_to-key"
@@ -22,11 +25,36 @@ FONT_TEXT = ("Gill Sans Light", 16)
 FORMAT_DATE = "%Y-%m-%d"
 
 
-class ScraperThread:
+class BackgroundWorker:
     scraper = None
     thread = None
+    queue = collections.deque()
+    exit = False
 
-    def __init__(self, config):
+    def __init__(self):
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def _loop(self):
+        while not self.exit:
+            if self.queue:
+                (action, args) = self.queue.popleft()
+                try:
+                    action(*args)
+                except Exception as e:
+                    logging.error(e)
+
+            else:
+                time.sleep(.1)
+
+    def enqueue(self, action, *args):
+        self.queue.append((action, args))
+
+
+class ChaseScraperWrapper:
+    scraper = None
+
+    def __init__(self, config: cfg.Configuration):
         self.config = config
 
     def get_scraper(self):
@@ -35,22 +63,34 @@ class ScraperThread:
         return self.scraper
 
     def logon(self, username, password):
-        self._run_in_thread(lambda: self.get_scraper().logon(username, password))
+        self.get_scraper().logon(username, password)
 
-    def _run_in_thread(self, target):
-        if self.thread and self.thread.is_alive():
-            logging.error("thread already running")
-            return
-        self.thread = threading.Thread(target=target)
-        self.thread.start()
+    def download_statement(self, account_id, date_from, date_to):
+        self.get_scraper().download_statement(account_id, date_from, date_to)
 
     def close(self, timeout=0):
         if self.scraper:
             self.scraper.quit(timeout)
+            self.scraper = None
+
+
+def login_only(worker: BackgroundWorker, scraper: ChaseScraperWrapper, username, password):
+    worker.enqueue(scraper.logon, username, password)
+
+
+def run_all(worker: BackgroundWorker, scraper: ChaseScraperWrapper, username, password, accounts, date_from, date_to):
+    chase_date_from = dt.datetime.strptime(date_from, FORMAT_DATE).strftime(CHASE_DATE_FORMAT)
+    chase_date_to = dt.datetime.strptime(date_to, FORMAT_DATE).strftime(CHASE_DATE_FORMAT)
+    worker.enqueue(scraper.logon, username, password)
+    for account in accounts:
+        worker.enqueue(scraper.download_statement, account, chase_date_from, chase_date_to)
+    worker.enqueue(scraper.close, 5)
 
 
 def main():
     config = cfg.get_configuration()
+    chase_scraper = ChaseScraperWrapper(config)
+    background_worker = BackgroundWorker()
 
     now = dt.datetime.now()
     first_day_of_this_month = dt.datetime(now.year, now.month, 1)
@@ -109,16 +149,22 @@ def main():
         [sg.Text("Sheets contents", justification='center')]
     ])
 
+    # ------ XPath Frame Definition ------ #
+    sg.ChangeLookAndFeel('DarkAmber')
+    xpath_frame = sg.Frame("XPath Tester", font=FONT_GROUP, relief=sg.RELIEF_FLAT, layout=
+    [
+        [sg.T("XPATH:"), sg.In(key="XPATH")],
+        [sg.Button(button_text="Go", key='XP_FIND'), sg.Button(button_text="Click", key='XP_CLICK')]
+    ])
+
     layout = [
         [date_range_frame],
-        [chase_frame, sg.VerticalSeparator(), gsheets_frame],
-        [sg.Button('Run', key=KEY_RUN, size=(20, 1)), sg.Text("", size=(80, 1)), sg.Button('Exit')]
+        [chase_frame, sg.VerticalSeparator(), sg.Column([[gsheets_frame], [xpath_frame]])],
+        [sg.Button('Run', key=KEY_RUN, size=(20, 1)), sg.Text("", size=(15, 1)), sg.Button('Exit')]
     ]
 
     window = sg.Window("Chazeets", layout, keep_on_top=True, element_justification='center')
 
-
-    scraper_thread = ScraperThread(config)
     while True:
         event, values = window.read(timeout=100)
         if event == '__TIMEOUT__':
@@ -126,16 +172,23 @@ def main():
         if event in (None, 'Exit'):
             break
         if event == KEY_CHASE_SIGNIN:
-            scraper_thread.logon(values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD])
+            login_only(background_worker, chase_scraper, values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD])
         if event == KEY_RUN:
-            pass
-            #scraper_thread.logon(values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD])
-
+            selected_accounts = [config.chase_accounts[account] for account in config.chase_accounts if values[account_key(account)]]
+            run_all(background_worker, chase_scraper, values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD], selected_accounts, values[KEY_DATES_FROM], values[KEY_DATES_TO])
+        if event in ("XP_FIND", "XP_CLICK"):
+            elt = chase_scraper.scraper._find_by_xpath(values['XPATH'], 1)
+            print(elt)
+            if event == "XP_CLICK":
+                elt.click()
     window.close()
-    scraper_thread.close(0)
+    chase_scraper.close(0)
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
     main()
 
 

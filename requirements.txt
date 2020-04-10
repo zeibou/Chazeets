@@ -1,2 +1,4 @@
 selenium
 pysimplegui
+pandas
+pygsheets

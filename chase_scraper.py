@@ -47,9 +47,9 @@ class ChaseScraper:
             self.driver.quit()
             self.driver = None
 
-    def download_statement(self, account_id, date_from, date_to):
-        logging.info(f"Retrieving statement for account {account_id} from {date_from} to {date_to}")
-        self.driver.get(CHASE_STATEMENTS_URL + account_id)
+    def download_statement(self, account: cfg.Account, date_from, date_to):
+        logging.info(f"Retrieving statement for account {account.alias} from {date_from} to {date_to}")
+        self.driver.get(CHASE_STATEMENTS_URL + account.url_param)
         time.sleep(1)
 
         activity_element = self._find_by_xpath(DROPDOWN_ACTIVITY_XPATH)

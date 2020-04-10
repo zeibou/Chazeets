@@ -134,7 +134,7 @@ def main():
         return f"account_{account}-key"
 
     chase_accounts_frame = sg.Frame("Accounts", font=FONT_GROUP, relief=sg.RELIEF_RIDGE, layout=
-    [[sg.Checkbox(account, key=account_key(account), default=True)] for account in config.chase_accounts])
+    [[sg.Checkbox(account, key=account_key(key), default=True)] for key, account in config.chase_accounts.items()])
 
     chase_frame = sg.Frame("Chase", font=FONT_TITLE, relief=sg.RELIEF_FLAT, layout=
     [

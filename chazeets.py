@@ -8,15 +8,17 @@ import PySimpleGUI as sg
 import configuration as cfg
 from chase_scraper import ChaseScraper
 from chase_scraper import DATE_FORMAT as CHASE_DATE_FORMAT
+from sheet_uploader import SheetUploader
 
 KEY_DATES_FROM = "date_from-key"
 KEY_DATES_TO = "date_to-key"
 
 KEY_CHASE_USERNAME = "chase_username-key"
 KEY_CHASE_PASSWORD = "chase_password-key"
-KEY_CHASE_SIGNIN = "chase_button_signin-key"
 
+KEY_SIGNIN = "button_signin-key"
 KEY_RUN = "button_run-key"
+KEY_PUSH = "button_push-key"
 
 FONT_TITLE = ("Gill Sans Bold", 35)
 FONT_GROUP = ("Gill Sans", 25)
@@ -74,22 +76,28 @@ class ChaseScraperWrapper:
             self.scraper = None
 
 
-def login_only(worker: BackgroundWorker, scraper: ChaseScraperWrapper, username, password):
+def login(worker: BackgroundWorker, scraper: ChaseScraperWrapper, username, password):
     worker.enqueue(scraper.logon, username, password)
 
 
-def run_all(worker: BackgroundWorker, scraper: ChaseScraperWrapper, username, password, accounts, date_from, date_to):
+def get_statements(worker: BackgroundWorker, scraper: ChaseScraperWrapper, accounts, date_from, date_to):
     chase_date_from = dt.datetime.strptime(date_from, FORMAT_DATE).strftime(CHASE_DATE_FORMAT)
     chase_date_to = dt.datetime.strptime(date_to, FORMAT_DATE).strftime(CHASE_DATE_FORMAT)
-    worker.enqueue(scraper.logon, username, password)
     for account in accounts:
         worker.enqueue(scraper.download_statement, account, chase_date_from, chase_date_to)
     worker.enqueue(scraper.close, 5)
 
 
+def upload_to_sheets(worker: BackgroundWorker, sheet_uploader: SheetUploader, date_from_str, date_to_str):
+    chase_date_from = dt.datetime.strptime(date_from_str, FORMAT_DATE)
+    chase_date_to = dt.datetime.strptime(date_to_str, FORMAT_DATE)
+    worker.enqueue(sheet_uploader.upload_statements, chase_date_from, chase_date_to, dt.datetime.today())
+
+
 def main():
     config = cfg.get_configuration()
     chase_scraper = ChaseScraperWrapper(config)
+    sheet_uploader = SheetUploader(config)
     background_worker = BackgroundWorker()
 
     now = dt.datetime.now()
@@ -124,9 +132,6 @@ def main():
         [
             sg.Text("Password: ", size=(15, 1), justification='right'),
             sg.InputText(key=KEY_CHASE_PASSWORD, size=(20, 1), justification='center', password_char='*')
-        ],
-        [
-            sg.Text("", size=(25, 1)), sg.Button("Sign In only", key=KEY_CHASE_SIGNIN)
         ]
     ])
 
@@ -160,7 +165,7 @@ def main():
     layout = [
         [date_range_frame],
         [chase_frame, sg.VerticalSeparator(), sg.Column([[gsheets_frame], [xpath_frame]])],
-        [sg.Button('Run', key=KEY_RUN, size=(20, 1)), sg.Text("", size=(15, 1)), sg.Button('Exit')]
+        [sg.Button("Sign In", key=KEY_SIGNIN, size=(8, 1)), sg.Button('Run', key=KEY_RUN, size=(8, 1)), sg.Button('Export to Sheets', key=KEY_PUSH, size=(15, 1)), sg.Text("", size=(15, 1)), sg.Button('Exit')]
     ]
 
     window = sg.Window("Chazeets", layout, keep_on_top=True, element_justification='center')
@@ -171,11 +176,13 @@ def main():
             continue
         if event in (None, 'Exit'):
             break
-        if event == KEY_CHASE_SIGNIN:
-            login_only(background_worker, chase_scraper, values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD])
+        if event == KEY_SIGNIN:
+            login(background_worker, chase_scraper, values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD])
         if event == KEY_RUN:
             selected_accounts = [config.chase_accounts[account] for account in config.chase_accounts if values[account_key(account)]]
-            run_all(background_worker, chase_scraper, values[KEY_CHASE_USERNAME], values[KEY_CHASE_PASSWORD], selected_accounts, values[KEY_DATES_FROM], values[KEY_DATES_TO])
+            get_statements(background_worker, chase_scraper, selected_accounts, values[KEY_DATES_FROM], values[KEY_DATES_TO])
+        if event == KEY_PUSH:
+            upload_to_sheets(background_worker, sheet_uploader, values[KEY_DATES_FROM], values[KEY_DATES_TO])
         if event in ("XP_FIND", "XP_CLICK"):
             elt = chase_scraper.scraper._find_by_xpath(values['XPATH'], 1)
             print(elt)

@@ -11,6 +11,8 @@ from configuration import AccountType
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 SHEET_TEMPLATE_NAME = "_TEMPLATE_"
+SHEET_CATEGORY_COL = 9
+SHEET_CATEGORY_ROW = 4
 
 # Date	Item	category	price		share factor	price to share
 DF_COL_ACCOUNT = "Account"
@@ -48,6 +50,12 @@ class SheetManager:
     def sheet_exists(self, name):
         curr_sheets = {s.title: s for s in self.sheet.worksheets()}
         return name in curr_sheets
+
+    def find_sheet_by_prefix(self, prefix):
+        for s in self.sheet.worksheets():
+            if s.title.startswith(prefix):
+                return s
+        return None
 
     def get_or_create_worksheet(self, name):
         curr_sheets = {s.title: s for s in self.sheet.worksheets()}
@@ -109,10 +117,22 @@ class CreditCardStatement(Statement):
         return df
 
 
+class ExpenseTotal:
+    def __init__(self, item, value):
+        self.item = item
+        self.total = value
+
+    def __str__(self):
+        return f"{self.item}: {self.total}"
+
 class SheetUploader:
     def __init__(self, config: cfg.Configuration):
         self.config = config
         self.api = SheetManager(config.google_spreadsheet_id, config.google_credentials_path, SCOPES)
+
+    @staticmethod
+    def sheet_name(date):
+        return f"{date:%b %Y}"
 
     def upload_statements(self, date_from: dt.datetime, date_to: dt.datetime, today: dt.datetime):
         df = pd.DataFrame(columns=[DF_COL_ACCOUNT, DF_COL_DATE, DF_COL_ITEM, DF_COL_CATEGORY, DF_COL_PRICE, DF_COL_FACTOR, DF_COL_PRICE_TO_SHARE])
@@ -122,7 +142,7 @@ class SheetUploader:
             if dff is not None:
                 df = df.append(dff)
 
-        sheet = self.api.safe_duplicate_sheet(f"{date_from:%b %Y}", SHEET_TEMPLATE_NAME)
+        sheet = self.api.safe_duplicate_sheet(SheetUploader.sheet_name(date_from), SHEET_TEMPLATE_NAME)
         sheet.index = 0
         sheet.set_dataframe(df, (1, 1))
 
@@ -135,6 +155,25 @@ class SheetUploader:
                 expected_filename = f"Chase{account.last_4_digits}_Activity{date_from:%Y%m%d}_{date_to:%Y%m%d}_{download_date:%Y%m%d}.CSV"
                 yield CreditCardStatement(account, os.path.join(self.config.statements_download_dir, expected_filename))
 
+    def pull_totals_for_date(self, date_from):
+        expected_name = SheetUploader.sheet_name(date_from)
+        if not self.api.sheet_exists(expected_name):
+            logging.warning(f"Could not find sheet with expected name '{expected_name}'")
+            s = self.api.find_sheet_by_prefix(expected_name)
+            if s is None:
+                logging.error(f"Could not find sheet with prefix '{expected_name}'")
+                return
+            else:
+                expected_name = s.title
+        yield from self.pull_totals(expected_name)
+
+    def pull_totals(self, sheet_name):
+        sheet = self.api.sheet.worksheet_by_title(sheet_name)
+        items = sheet.get_col(SHEET_CATEGORY_COL, include_tailing_empty=False)
+        values = sheet.get_col(SHEET_CATEGORY_COL + 1, include_tailing_empty=False)
+        for i, v in zip(items[SHEET_CATEGORY_ROW:-1], values[SHEET_CATEGORY_ROW:-1]):
+            yield ExpenseTotal(i, v)
+
 
 if __name__ == '__main__':
     config = cfg.get_configuration()
@@ -145,5 +184,9 @@ if __name__ == '__main__':
 
     uploader = SheetUploader(config)
     uploader.upload_statements(feb1, feb29, today)
+    
+    expenses = uploader.pull_totals_for_date(feb1)
+    for e in expenses:
+        print(e)
 
 

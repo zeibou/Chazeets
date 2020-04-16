@@ -43,6 +43,10 @@ class Configuration:
     google_credentials_path = None
     google_spreadsheet_id = None
     statements_download_dir = None
+    splitwise_key: None
+    splitwise_secret: None
+    splitwise_access_token: None
+    splitwise_group_id: None
 
     def load(self, config_file_path, override_only=False):
         if not os.path.exists(config_file_path):

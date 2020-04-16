@@ -2,3 +2,4 @@ selenium
 pysimplegui
 pandas
 pygsheets
+splitwise

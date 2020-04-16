@@ -8,5 +8,9 @@
   "chase_username": "",
   "google_credentials_path": "./credentials.json",
   "google_spreadsheet_id": "",
-  "statements_download_dir" : ""
+  "statements_download_dir" : "",
+  "splitwise_key": "",
+  "splitwise_secret": "",
+  "splitwise_access_token": "",
+  "splitwise_group_id": ""
 }

@@ -29,6 +29,9 @@ class SheetManager:
         self.client = pygsheets.authorize(client_secret=credentials_json, scopes=scopes)
         self.sheet = self.client.open_by_key(sheet_id)
 
+    def refresh(self):
+        self.sheet = self.client.open_by_key(self.sheet.id)
+
     def get_safe_new_sheet_name(self, wanted_name):
         curr_sheets = {s.title: s for s in self.sheet.worksheets()}
         safe_name = wanted_name
@@ -123,7 +126,8 @@ class ExpenseTotal:
         self.total = value
 
     def __str__(self):
-        return f"{self.item}: {self.total}"
+        return f"${self.total} on {self.item}"
+
 
 class SheetUploader:
     def __init__(self, config: cfg.Configuration):
@@ -172,7 +176,7 @@ class SheetUploader:
         items = sheet.get_col(SHEET_CATEGORY_COL, include_tailing_empty=False)
         values = sheet.get_col(SHEET_CATEGORY_COL + 1, include_tailing_empty=False)
         for i, v in zip(items[SHEET_CATEGORY_ROW:-1], values[SHEET_CATEGORY_ROW:-1]):
-            yield ExpenseTotal(i, v)
+            yield ExpenseTotal(i, float(v))
 
 
 if __name__ == '__main__':
@@ -183,8 +187,8 @@ if __name__ == '__main__':
     feb29 = dt.datetime(2020, 2, 29)
 
     uploader = SheetUploader(config)
-    uploader.upload_statements(feb1, feb29, today)
-    
+    #uploader.upload_statements(feb1, feb29, today)
+
     expenses = uploader.pull_totals_for_date(feb1)
     for e in expenses:
         print(e)

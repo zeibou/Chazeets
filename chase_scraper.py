@@ -36,9 +36,10 @@ class ChaseScraper:
 
     def logon(self, username, password, wait_seconds=3):
         self.driver.get(CHASE_LOGIN_URL)
-        self._find_by_id(INPUT_LOGON_USERNAME_ID).send_keys(username)
-        self._find_by_id(INPUT_LOGON_PASSWORD_ID).send_keys(password)
-        self._find_by_id(INPUT_LOGON_PASSWORD_ID).submit()
+        # self._find_by_id(INPUT_LOGON_USERNAME_ID).send_keys(username)
+        if password:
+            self._find_by_id(INPUT_LOGON_PASSWORD_ID).send_keys(password)
+            self._find_by_id(INPUT_LOGON_PASSWORD_ID).submit()
         time.sleep(wait_seconds)
 
     def quit(self, wait_seconds=5):

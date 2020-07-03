@@ -241,7 +241,7 @@ def main():
             window[KEY_SHEET_TABS].update(values=get_sheet_tabs(sheet_uploader))
         if event == KEY_SPLITWISE_PUSH:
             for e in sheet_uploader.pull_totals(curr_tab):
-                splitwise.share_expense_with_group_members(sw, f"{curr_tab} - {e.item}", e.total, config.splitwise_group_id)
+                splitwise.share_expense_with_group_members(sw, f"{curr_tab} - {e.item}", e.total, config.splitwise_group_id, date_to)
         if event in ("XP_FIND", "XP_CLICK"):
             elt = chase_scraper.scraper._find_by_xpath(values['XPATH'], 1)
             print(elt)

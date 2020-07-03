@@ -2,6 +2,7 @@ from splitwise import Splitwise
 from splitwise.expense import Expense
 from splitwise.user import ExpenseUser
 import configuration as cfg
+import datetime as dt
 
 __debug = False
 
@@ -27,7 +28,7 @@ def init(config: cfg.Configuration):
     return Splitwise(config.splitwise_key, config.splitwise_secret, access_token)
 
 
-def share_expense_with_group_members(sw: Splitwise, desc, cost, group_id):
+def share_expense_with_group_members(sw: Splitwise, desc, cost, group_id, date):
     grp = sw.getGroup(group_id)
     current_user = sw.getCurrentUser()
     other_members = [m for m in grp.getMembers() if m.id != current_user.id]
@@ -39,6 +40,7 @@ def share_expense_with_group_members(sw: Splitwise, desc, cost, group_id):
     expense.cost = f"{cost}"
     expense.description = f"{desc}"
     expense.group_id = f"{group_id}"
+    expense.setDate(date.strftime("%Y/%m/%d"))
 
     users = []
     for om in other_members:
@@ -72,9 +74,12 @@ def main():
     _debug(sw.getGroups())
     _debug(sw.getFriends())
 
-    grp_id = 19058988 # test group
-    share_expense_with_group_members(sw, "test_10.01", 10.01, grp_id)
-    share_expense_with_group_members(sw, "test_10.02", 10.02, grp_id)
+    grp_id = 19058988  # test group
+    _debug(sw.getExpenses(group_id=grp_id))
+
+    today = dt.date.today()
+    share_expense_with_group_members(sw, "test_date", 10, grp_id, today)
+    # share_expense_with_group_members(sw, "test_10.02", 10.02, grp_id, today)
 
 
 if __name__ == '__main__':

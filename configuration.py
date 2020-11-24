@@ -19,6 +19,7 @@ class Account:
         self.url_param = dico.get("url_param")
         self.account_type = AccountType[dico.get("account_type")]
         self.last_4_digits = dico.get("last_4_digits")
+        self.div_id = dico.get("div_id")
 
     def __str__(self):
         return f"{self.alias}-{self.last_4_digits}"

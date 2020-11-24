@@ -2,8 +2,8 @@
   "chromedriver_path": "./chromedriver",
   "chase_accounts":
   {
-    "CHASE_SAMPLE_CHECKING_ACCOUNT" : {"url_param": "DDA,CHK,123456789", "account_type": "Checking", "alias":  "acct_1", "last_4_digits": "0123"},
-    "CHASE_SAMPLE_CARD_ACCOUNT" :  {"url_param": "CARD,BAC,123456789", "account_type": "CreditCard", "alias":  "acct_2", "last_4_digits": "4567"}
+    "CHASE_SAMPLE_CHECKING_ACCOUNT" : {"url_param": "DDA,CHK,123456789", "account_type": "Checking", "alias":  "acct_1", "last_4_digits": "0123", "div_id": "downloadActivityOptionId"},
+    "CHASE_SAMPLE_CARD_ACCOUNT" :  {"url_param": "CARD,BAC,123456789", "account_type": "CreditCard", "alias":  "acct_2", "last_4_digits": "4567", "div_id": "currentDisplayOption-icon"}
   },
   "chase_username": "",
   "google_credentials_path": "./credentials.json",

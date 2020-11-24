@@ -17,7 +17,8 @@ CHASE_STATEMENTS_URL = "https://secure01b.chase.com/web/auth/dashboard#/dashboar
 INPUT_LOGON_USERNAME_ID = 'userId-text-input-field'
 INPUT_LOGON_PASSWORD_ID = 'password-text-input-field'
 
-DROPDOWN_ACTIVITY_XPATH = "/html/body/div[2]/div/div[1]/div[2]/main/div[3]/div/div/div[2]/div/div[2]/div/div[2]/div/div[2]/div/div"
+#DROPDOWN_ACTIVITY_XPATH = "/html/body/div[2]/div/div[1]/div[2]/main/div[3]/div/div/div[2]/div/div[2]/div/div[2]/div/div[2]/div/div"
+#DROPDOWN_ACTIVITY_ID = "downloadActivityOptionId"
 DROPDOWN_DATE_RANGE_XPATH = '//text()[. = "Choose a date range"]/../..'
 
 INPUT_DATE_FROM_ID = 'input-accountActivityFromDate-validate-input-field'
@@ -53,7 +54,7 @@ class ChaseScraper:
         self.driver.get(CHASE_STATEMENTS_URL + account.url_param)
         time.sleep(1)
 
-        activity_element = self._find_by_xpath(DROPDOWN_ACTIVITY_XPATH)
+        activity_element = self._find_by_id(account.div_id)
         activity_element.click()
         time.sleep(.5)
 
